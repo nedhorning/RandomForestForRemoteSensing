@@ -1,2 +1,2 @@
 # RandomForestForRemoteSensing
-This is a collection of scripts written in the R programming language and guides that explain how the scripts work. 
+This is a collection of scripts written in the R programming language and guides that explain how the scripts work. The script were written for image classification using image segmentation and a random forests classifier. The intent is to provide robust image classification methods that can be used by people with modest remote sensing experience. The guide should be easy to follow. If it's not please let me know and I'll try to make improvements by integrating your comments and requests.
