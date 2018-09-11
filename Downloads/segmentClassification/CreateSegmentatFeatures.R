@@ -1,5 +1,5 @@
 #############################################################################
-# February 26, 2013
+# Updated 11 September 2018
 
 # This script is used to calculate features from image segment using a zonal statistics approach. The 
 # output is a Comma Separated Variable (CSV) file that can be used as input to the SegmentRF_Classification 
@@ -38,12 +38,14 @@ print("Set variables and start processing")
 #
 #############################  SET VARIABLES HERE  ########################################
 # Set variables here
+# Set working directory
+setwd("/media/ned/Data1/AMNH/WHRC_CarbonProject/GoogleProject/Tutorials/MappingForestCover/Data")
 # Name and path for the image that will be used to calculate feature information image
-satImage <- "/media/684EE5FF4EE5C642/AMNH/WHRC_CarbonProject/GoogleProject/Tutorials/MappingForestCover/Data/RadarSubset_2.tif"
+satImage <- "RadarSubset_2.tif"
 
 # Name and path for the segment polygon vector file. If using a raster image for segments use two single or double quotes
 # with no space between them
-#segVector <- '/media/684EE5FF4EE5C642/AMNH/WHRC_CarbonProject/GoogleProject/Tutorials/MappingForestCover/Data/MeanShift15_10_50.shp'
+#segVector <- "MeanShift15_10_50.shp"
 segVector <- ''
 
 # The label for the attribute field in the Shapefile that has segment IDs. This is ignored if segment data comes from an image
@@ -51,11 +53,11 @@ idAttributeLabel <- "DN"
 
 # Name and path for the segment image. If using a vecotor file for segments use two single or double quotes
 # with no space between them
-segImage <- "/media/684EE5FF4EE5C642/AMNH/WHRC_CarbonProject/GoogleProject/Tutorials/MappingForestCover/Data/MeanShift15_10_50Rasterize.tif"
+segImage <- "MeanShift15_10_50Rasterize.tif"
 #segImage <- ""
 
 # Name and path of the output CSV file
-outFeatures <- "/media/684EE5FF4EE5C642/AMNH/WHRC_CarbonProject/GoogleProject/Tutorials/MappingForestCover/Data/segmentFeatures_SubRas3.csv"
+outFeatures <- "segmentFeatures_SubRas3.csv"
 
 # No-data value for the input satellite image
 ndSat <- 0
@@ -110,7 +112,8 @@ for (b in 1:nlayers(satelliteImage)) { NAvalue(satelliteImage@layers[[b]]) <- nd
 # If segVector has a path and filename process this block of code
 if (segVector != '' & segImage == '') { 
   cat("Reading vector segments\n")
-  vec <- readShapePoly(segVector)
+  segVectorLayerName <- strsplit(tail(unlist(strsplit(segVector, "/")), n=1), "\\.")[[1]] [1]
+  vec <- readOGR(segVector, segVectorLayerName)
   allAtt <- slot(vec, "data")
   numRows <- nrow(allAtt)
   

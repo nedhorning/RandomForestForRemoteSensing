@@ -1,4 +1,6 @@
 #############################################################################
+# Updated 11 September 2018 
+#
 # The script reads an ESRI Shapefile (defined by the "shapefile" variable) with 
 # training polygons and then either selects all pixels or randomly selects a 
 # user-determined number of samples (defined using classNums and classSampNums) 
@@ -60,7 +62,7 @@ cat("Set variables and start processing\n")
 #
 #############################   SET VARIABLES HERE  ###################################
 # Set working directory
-setwd("/media/nedhorning/684EE5FF4EE5C642/AMNH/R_Project/TestData")
+setwd("/media/ned/Data1/AMNH/R_Project/TestData")
 # Name and path for the Shapefile (don't need the .shp extension)
 shapefile <- 'spot_400_train/spot_400_train.shp'
 # Class numbers that you want to select fraining sample from
@@ -97,7 +99,8 @@ startTime <- Sys.time()
 cat("Start time", format(startTime),"\n")
 
 # Read the Shapefile
-vec <- readShapePoly(shapefile) 
+shapefileLayerName <- strsplit(tail(unlist(strsplit(shapefile, "/")), n=1), "\\.")[[1]] [1]
+vec <- readOGR(shapefile, shapefileLayerName)
 
 # Load the image then flag all no-data values(nd) so they are not processed
 satImage <- brick(inImageName)
@@ -343,7 +346,8 @@ if (outMarginFile != "") {
   xyCoords <- xyCoords[order(marginData),]
   
   # Create and write point Shapefile with margin information to help improve training data
-  pointVector <- SpatialPointsDataFrame(xyCoords, as.data.frame(trainingAccuracy), coords.nrs = numeric(0), proj4string = satImage@crs)
+  row.names(trainingAccuracy) <- NULL
+  pointVector <- SpatialPointsDataFrame(xyCoords, as.data.frame(trainingAccuracy), proj4string = satImage@crs, match.ID = FALSE)
   writeOGR(pointVector, outMarginFile, "layer", driver="ESRI Shapefile", check_exists=TRUE)
 }
 

@@ -1,5 +1,5 @@
 ##########################################################################################
-# February 26, 2013
+# Updated 11 September 2018
 #
 # This script is used to classify a segmented image using a random forests classifier. Before running this 
 # script it is necessary to generate a comma separated Values (CSV) file with the segment number in the 
@@ -46,36 +46,36 @@ require(raster)
 require(rgdal)
 require(sp)
 #############################  SET VARIABLES HERE  #######################################
+# Set working directory
+setwd("/media/ned/Data1/AMNH/WHRC_CarbonProject/GoogleProject/Tutorials/MappingForestCover/Data")
+
 #Name and location of segment feature data CSV file output from the CreateSegmentFeatures_v1.R script
-segCsv <- "/media/nedhorning/684EE5FF4EE5C642/AMNH/CI/Madagascar_ESPA/ImageData/119060001/segmentFeaturesMS_v1.csv"
+segCsv <- "segmentFeatures_SubRas3.csv"
 
 # Name and location of the segment raster image 
-segImage <- "/media/nedhorning/684EE5FF4EE5C642/AMNH/CI/Madagascar_ESPA/ImageData/119060001/SubsetSegStep3_SegsMS_v1.tif"
+segImage <- "MeanShift15_10_50Rasterize.tif"
 
 # Segment raster nodata value.
 nd <- 0
 
 # Name and location of the classified image
-outImage <- '/media/nedhorning/684EE5FF4EE5C642/AMNH/CI/Madagascar_ESPA/ImageData/119060001/SubsetSegStep3_SegsMS_v1_class.tif'
+outImage <- 'classImage.tif'
 
 # Name and location of the output Shapefile point file that will be created. If this output 
 # is not needed you can enter two double or single-quotes (“” or '')
 # Note that if this file exists the write will fail with the message "Creation of output file failed" Enter 
-outMarginFile <- '/media/nedhorning/684EE5FF4EE5C642/AMNH/CI/Madagascar_ESPA/ImageData/119060001/marginMS_v1.shp'
+outMarginFile <- 'margin.shp'
 
 # Data set name for the vector file containing training data. This is often a file name or directory. 
 # This and "layer" are defined by the ORG drivers. Look at http://www.gdal.org/ogr/ogr_formats.html for more info
-trainingDsn <- '/media/nedhorning/684EE5FF4EE5C642/AMNH/CI/Madagascar_ESPA/ImageData/119060001/SegTraining_v1.shp'
-
-# Layer name for the vector file. This is often the file name without an extension. 
-trainingLayer <- 'SegTraining_v1'
+trainingDsn <- 'clippedTrainingData.shp'
 
 # Enter EITHER the name (case sensitive and in quotes) or the column number of the 
 # field containing class (forest or non-forest) number
-classNum <- "id"
+classNum <- "class_int"
 
 # Output CSV file with class mapping information. If this output is not needed you can enter two double or single-quotes (“” or '')
-outClassMapCSV <- '/media/nedhorning/684EE5FF4EE5C642/AMNH/CI/Madagascar_ESPA/ImageData/119060001/classMappingMS_v1.csv'
+outClassMapCSV <- 'classMapping.csv'
 
 # Output classification without applying threshold (enter TRUE or FALSE)
 classImage <- TRUE
@@ -95,6 +95,7 @@ cat("Start time", format(startTime),"\n")
 
 # Read the vector file 
 cat("Reading the vector file\n")
+trainingLayer <- strsplit(tail(unlist(strsplit(trainingDsn, "/")), n=1), "\\.")[[1]] [1]
 vec <- readOGR(trainingDsn, trainingLayer)
 pts <- slot(vec, "data")
 

@@ -1,5 +1,5 @@
 ##########################################################################################
-# March 14, 2013
+#Updated 11 September 2018
 #
 # This script is used to edit the output classified image from the SegmentRF_Classification.R 
 # script. When running the SegmentRF_Classification script you need to make sure you set the 
@@ -23,29 +23,29 @@
 require(raster)
 require(rgdal)
 #############################  SET VARIABLES HERE  #######################################
+# Set working directory
+setwd("/media/ned/Data1/AMNH/WHRC_CarbonProject/GoogleProject/Tutorials/MappingForestCover/Data")
+
 # Name and location of the segment raster image 
-segImage <- "/home/nedhorning/AMNH/WHRC_CarbonProject/GoogleProject/Tutorials/MappingForestCover/Data/MeanShift15_10_50Rasterize.tif"
+segImage <- "MeanShift15_10_50Rasterize.tif"
 
 # Segment raster nodata value.
 nd <- 1
 
 # Name and location of the edited classified map
-outImage <- '/media/684EE5FF4EE5C642/AMNH/WHRC_CarbonProject/GoogleProject/Tutorials/MappingForestCover/Data/Forest_NonforestMapTest_v8.tif'
+outImage <- "classImageEdited.tif"
 
 # Input class mapping CSV file
-inClassMapCSV <- '/media/684EE5FF4EE5C642/AMNH/WHRC_CarbonProject/GoogleProject/Tutorials/MappingForestCover/Data/classMapping.csv'
+inClassMapCSV <- "classMapping.csv"
 
 # Data set name for the vector point file containing locations and class assignments for segments to be modified. 
 # This is often a file name or directory. This and "layer" are defined by the ORG drivers. 
 # Look at http://www.gdal.org/ogr/ogr_formats.html for more info
-editPointsDsn <- '/media/684EE5FF4EE5C642/AMNH/R_Project/TestData/editSegs.shp'
-
-# Layer name for the vector file. This is often the file name without an extension. 
-editPointsLayer <- 'editSegs'
+editPointsDsn <- "editSegs.shp"
 
 # Enter EITHER the name (case sensitive and in quotes) or the column number of the 
 # field containing class (forest or non-forest) number
-newClassNum <- "newClass"
+newClassNum <- "id"
 ###########################################################################################
 ## Start processing
 startTime <- Sys.time()
@@ -53,6 +53,7 @@ cat("Start time", format(startTime),"\n")
 
 # Read the vector file 
 cat("Reading the vector file\n")
+editPointsLayer <- strsplit(tail(unlist(strsplit(editPointsDsn, "/")), n=1), "\\.")[[1]] [1]
 vec <- readOGR(editPointsDsn, editPointsLayer)
 newClass <- slot(vec, "data")
 
@@ -64,11 +65,10 @@ classMap <- read.csv(inClassMapCSV)
 
 # Extract segment IDs under the points to edit
 cat("Extracting segment IDs under the points to modify\n")
-changeSegIDs <- cbind(newClass[,newClassNum], extract(segImg, vec))
+changeSegIDs <- cbind(as.integer(as.character(newClass[,newClassNum])), extract(segImg, vec))
 
 # Change class mapping based on point data
 for (i in 1:nrow(changeSegIDs)) {
-  #classMap[changeSegIDs[i, 2], 2] <- changeSegIDs[i,1]
   classMap[which(classMap[,1]==changeSegIDs[i, 2]), 2] <- changeSegIDs[i,1]
 }
  
@@ -80,7 +80,7 @@ bs <- blockSize(segImg)
 img.out <- raster(segImg)
 img.out <- writeStart(img.out, outImage, overwrite=TRUE, datatype='INT1U')
 
-# Loop over blocks of the output raster from eCognition and write the new classified value.
+# Loop over blocks of the output raster from eCognition cland write the new classified value.
 # This looping method will allow for the input of larger rasters without memory problems.
 for (i in 1:bs$n) {
   cat("processing block", i, "of", bs$n, "\r")
