@@ -66,9 +66,11 @@ cat("Set variables and start processing\n")
 setwd("C:/Users/Jonas/Google Drive/Skripte/RF_Classification")
 # To get reproducible results, set the seed to a constant number
 set.seed(13579)
+# Should Output Files be overwritten if they already exist?
+overwrite = F
 # Toggle for using Multiprocessing. Multiprocessing is only faster for big images.
 # For smaller images and/or few available cores the scheduling overhead removes most of the advantages.
-multiprocessing = T
+multiprocessing = F
 cores = 10
 # Name and path for the Shapefile (with extension)
 shapefile <- "./Sample_Data/BALATON_FNF.gpkg"
@@ -111,52 +113,36 @@ rasterOptions(progress = "text", timer = TRUE, overwrite = TRUE)
 # Initialize all paths for output and check if the files don't exist yet
 
 createOutPath <- function(appString){
-  
+  out <- tryCatch(
+    {
+      outFileBaseName <- tools::file_path_sans_ext(inImageName)
+      outPath <- paste0(outFileBaseName, appString)
+      
+      if(file.exists(outPath) && overwrite){
+        warning(paste("File",outPath,"already exists \n"))
+      } else if(file.exists(outPath)){
+        stop(paste("File",outPath,"already exists \n"))
+      } else {
+        return(outPath)
+      }
+    },
+    warning = function(cond){
+      message(cond)
+      message("It will be overwritten.")
+      return(outPath)
+    },
+    error = function(cond){
+      message(cond)
+      if(multiprocessing) endCluster()
+      stop("Also check if any other necessary output files already exist.", call. = F)
+    }
+  )
 }
 
-extensionName <- unlist(strsplit(inImageName, "\\."))[length(unlist(strsplit(inImageName, "\\.")))]
-outFileBaseName <- unlist(strsplit(inImageName, paste("\\.", extensionName, sep="")))[1]
-fileError <- "\n"
-
-if(classImage){
-  outClassImage <- paste(outFileBaseName, "_Class.tif", sep="")
-  if(file.exists(outClassImage)){
-    fileError <- paste(fileError,"File",outClassImage," already exists \n")
-  }
-}
-
-if(probImage){
-  outProbImage <- paste(outFileBaseName, "_Prob.tif", sep="")
-  if(file.exists(outProbImage)){
-    fileError <- paste(fileError,"File",outProbImage," already exists \n")
-  }
-}
-
-if(threshImage){
-  outThreshImage <- paste(outFileBaseName, "_Thresh.tif", sep="")
-  if(file.exists(outThreshImage)){
-    fileError <- paste(fileError,"File",outThreshImage," already exists \n")
-  }
-}
-
-if(marginFile){
-  outMarginFile <- paste(outFileBaseName, "_Margin.gpkg", sep="")
-  if(file.exists(outMarginFile)){
-    fileError <- paste(fileError,"File",outMarginFile," already exists \n")
-  }
-}
-
-if(fileError != "\n"){
-  cat(fileError)
-  continue <- readline(prompt="\nOverwrite these files? (Y/N)\n\n")
-  if (substr(continue, 1,1) == "N") {
-    stop("Please move or delete the necessary output files before continuing.", call.=FALSE)
-  } else if (substr(continue, 1,1) == "Y"){
-    cat("Files will be overwritten.\n\n")
-  } else {
-    stop("Invalid Input.")
-  }
-}
+if(classImage) outClassImage <- createOutPath("_Class.tif")
+if(probImage) outProbImage <- createOutPath("_Prob.tif")
+if(threshImage) outThreshImage <- createOutPath("_Thresh.tif")
+if(marginFile) outMarginFile <- createOutPath("_Margin.gpkg")
 
 # Read the Shapefile
 vec <- st_read(shapefile)
@@ -171,6 +157,7 @@ uniqueAtt <-as.numeric(vec[[attName]])
 # Check if length of classNums and classSampNums is equal
 if (length(classNums) != length(classSampNums)) {
   cat("\n***************length of classNums and classSampNums not equal***************** \n")
+  if(multiprocessing) endCluster()
   stop("Check the classNums and classSampNums variable\n", call.=FALSE)
 }
 
@@ -178,6 +165,7 @@ if (length(classNums) != length(classSampNums)) {
 #### CHECK THIS FUNCTION TO SEE IF classNums ARE IN uniqueAtt  ################
 if (sum(classNums %in% uniqueAtt) != length(classNums)) {
   cat("\n*******not all classes in classNums are defined in the vector file******* \n")
+  if(multiprocessing) endCluster()
   stop("Check classNums and vector attribute table\n", call.=FALSE)
 }
 
