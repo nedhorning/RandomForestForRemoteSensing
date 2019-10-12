@@ -1,5 +1,4 @@
 #############################################################################
-# Updated 05 October 2019
 #
 # The script reads a Vector File (for example an ESRI Shapefile or Geopackage) with 
 # training polygons and then either selects all pixels contained in the polygons or 
@@ -61,17 +60,16 @@ library(lwgeom)
 
 cat("Set variables and start processing\n")
 #
-#############################   SET VARIABLES HERE  ###################################
+#############################  SET VARIABLES HERE  ###################################
 # Set working directory
 setwd("C:/Users/Jonas/Google Drive/Skripte/RF_Classification")
 # To get reproducible results, set the seed to a constant number
 set.seed(13579)
 # Should Output Files be overwritten if they already exist?
-overwrite = F
-# Toggle for using Multiprocessing. Multiprocessing is only faster for big images.
-# For smaller images and/or few available cores the scheduling overhead removes most of the advantages.
-multiprocessing = F
-cores = 10
+overwrite = T
+# Toggle for using Multiprocessing
+multiprocessing = T
+cores = 6
 # Name and path for the Shapefile (with extension)
 shapefile <- "./Sample_Data/BALATON_FNF.gpkg"
 # Class numbers that you want to select training sample from 
@@ -106,12 +104,11 @@ yBand <- 0
 startTime <- Sys.time()
 cat("Start time", format(startTime),"\n")
 
-# Initialize Cluster
+# Initialize Cluster and set Raster options
 if(multiprocessing) beginCluster(cores)
 rasterOptions(progress = "text", timer = TRUE, overwrite = TRUE)
 
-# Initialize all paths for output and check if the files don't exist yet
-
+# Initialize all paths for output and check if the files exist
 createOutPath <- function(appString){
   out <- tryCatch(
     {
@@ -161,6 +158,13 @@ if (length(classNums) != length(classSampNums)) {
   stop("Check the classNums and classSampNums variable\n", call.=FALSE)
 }
 
+# Check if classNums and classSampNums are numeric vectors
+if (!is.numeric(classNums) && !is.numeric(classSampNums)) {
+  cat("\n***************classNums and classSampNums can only contain numbers***************** \n")
+  if(multiprocessing) endCluster()
+  stop("Check the classNums and classSampNums variable\n", call.=FALSE)
+}
+
 # Check if all classNums exist in uniqueAtt
 #### CHECK THIS FUNCTION TO SEE IF classNums ARE IN uniqueAtt  ################
 if (sum(classNums %in% uniqueAtt) != length(classNums)) {
@@ -185,7 +189,7 @@ for(i in 1:length(classNums)){
     cat("Create training data using all pixels in polygons with class",classNums[i],"\n")
     onlyAvailable <- vec[which(vec$class %in% classNums[i]),]
     
-    if (outMarginFile != ""){
+    if (marginFile){
       extracted <- within(extract(satImage, as(onlyAvailable, "Spatial"), df=TRUE, cellnumbers=TRUE), rm('ID'))
       coords <- xyFromCell(satImage, extracted$cell)
       colnames(coords) <- c("X", "Y")
@@ -206,7 +210,7 @@ for(i in 1:length(classNums)){
     extracted <- within(extract(satImage, coords, df=TRUE), rm('ID'))
     temp <- na.omit(cbind(response, extracted))
     
-    if (outMarginFile != "") xyCoords <- rbind(xyCoords, coords)
+    if (marginFile) xyCoords <- rbind(xyCoords, coords)
     
     trainvals <- rbind(trainvals, temp)
   }
@@ -251,6 +255,7 @@ if (xBand != 0 & yBand != 0) {
     continue <- readline(prompt="Type n to stop, c to change feature space bands, s to define a rectangle to locate gaps in feature space, or any other key to continue with random forests model creation and prediciton: \n\n")
     
     if (substr(continue, 1,1) == "n") {
+      if(multiprocessing) endCluster()
       stop("Processing stopped at users request \n\n", call.=FALSE)
     }
     if (substr(continue, 1,1) == "s") {
@@ -283,8 +288,9 @@ if (xBand != 0 & yBand != 0) {
       satImage[(b1 > min(xvals)) & (b1 < max(xvals)) & (b2 > min(yvals)) & (b2 < max(yvals))] <- 255
       
       # Plot the thresholded image with selected pixels displayed as white pixels
-      plotRGB(satImage, r=1,g=2,b=3, , stretch='hist')
+      plotRGB(satImage, r=1,g=2,b=3,stretch='hist')
       cat("White pixels in the plotted image were selected in the rectangle drawn on the feature space plot")
+      if(multiprocessing) endCluster()
       stop("Add new training data and re-run the script \n\n", call.=FALSE)
     }
     if (substr(continue, 1,1) == "c") {
@@ -389,13 +395,13 @@ if(multiprocessing){
  
 # Print error rate and confusion matrix for this classification
 confMatrix <- randfor$confusion
-cat("#################################################################################\n")
+cat("\n#################################################################################\n")
 cat("OOB error rate estimate\n", 1 - (sum(diag(confMatrix)) / sum(confMatrix[,1:ncol(confMatrix)-1])), "%\n\n", sep="")
 cat("Confusion matrix\n")
 print(randfor$confusion)
 cat("\n")
 
-if (outMarginFile != "") {
+if (marginFile) {
   # Calculate margin (proportion of votes for correct class minus maximum proportion of votes for other classes)
   marginData <- margin(randfor)
   trainingAccuracy <- cbind(marginData[order(marginData)], trainvals[order(marginData),1])
