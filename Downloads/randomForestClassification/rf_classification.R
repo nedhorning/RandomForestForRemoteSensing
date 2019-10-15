@@ -29,7 +29,8 @@
 # is the margin. The margin of a training point is the proportion of votes for the correct 
 # class minus maximum proportion of votes for the other classes for that segment. Positive margin 
 # values represent correct classification, and vice versa. The margin data are written to a 
-# point Geopackage so they can be overlaid on the image and training polygons to assess which 
+# point vector file with the same type as the input file (Using Geopackages is strongly recommended). 
+# This vector file can be overlaid on the image and training polygons to assess which 
 # points need to be removed and relabeled in the training data and it can help determine which 
 # classes needs additional training segments.
 #
@@ -65,15 +66,14 @@ cat("Set variables and start processing\n")
 setwd("C:/Users/USERNAME/Scriptlocation")
 # To get reproducible results, set the seed to a constant number
 set.seed(13579)
-# Should output files be overwritten if they already exist?
+# Should output files be overwritten if they already exist (enter TRUE or FALSE)
 overwrite = F
-# Toggle for using Multiprocessing
+# Toggle for using multi-core processing
 multiprocessing = F
 cores = 4
 # Name and path for the Shapefile (with extension)
 shapefile <- "./Sample_Data/BALATON_FNF.gpkg"
-# Class numbers that you want to select training sample from 
-# The Classes are required to be sequential integers starting at 1
+# Class numbers that you want to select training sample from
 classNums <- c(1,2,3)
 # For each land cover class the approximate number of training samples to be randomly selected 
 # If a value is "0" then all pixels in all of the polygons for that class will be used 
@@ -83,7 +83,7 @@ attName <- "DN"
 # No-data value for the input image
 nd <- 0
 # Name and path for the input satellite image
-inImageName <- "./Sample_Data/BALATON_L8_ND.tif"
+inImageName <- "./Sample_Data/BALATON_L8.tif"
 # Output point file with margins of sampled points (enter TRUE or FALSE)
 marginFile <- TRUE
 # Output classification image (enter TRUE or FALSE)
@@ -106,7 +106,7 @@ cat("Start time", format(startTime),"\n")
 
 # Initialize Cluster and set Raster options
 if(multiprocessing) beginCluster(cores)
-rasterOptions(progress = "text", timer = TRUE, overwrite = TRUE)
+rasterOptions(progress = "text", timer = TRUE, overwrite = TRUE, datatype = "INT2U")
 
 # Helper function to initialize all paths for output and check if the files exist
 createOutPath <- function(appString){
@@ -131,7 +131,8 @@ createOutPath <- function(appString){
     error = function(cond){
       message(cond)
       if(multiprocessing) endCluster()
-      stop("Also check if any other necessary output files already exist.", call. = F)
+      stop("Please move or rename any output files that already exist.
+       If the output files should automatically be overwritten you can set the variable 'overwrite' to TRUE.", call. = F)
     }
   )
 }
@@ -140,7 +141,7 @@ createOutPath <- function(appString){
 if(classImage) outClassImage <- createOutPath("_Class.tif")
 if(probImage) outProbImage <- createOutPath("_Prob.tif")
 if(threshImage) outThreshImage <- createOutPath("_Thresh.tif")
-if(marginFile) outMarginFile <- createOutPath("_Margin.gpkg")
+if(marginFile) outMarginFile <- createOutPath(paste0("_Margin.",tools::file_ext(shapefile)))
 
 # Read the Shapefile
 vec <- st_read(shapefile)
